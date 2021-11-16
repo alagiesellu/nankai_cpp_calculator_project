@@ -10,8 +10,11 @@ int main() {
   // Define grammar and evaluation rules
   g.setSeparator(g["Whitespace"] << "[\t ]");
 
-  g["Sum"     ] << "Add | Subtract | Product";
-  g["Product" ] << "Multiply | Divide | Atomic";
+  g["Session"     ] << "Header | Equation";
+  g["Header" ] << "'----'";
+  g["Equation" ] << "(Variable EQ)? Expression";
+  g["EQ" ] << "'='";
+
   g["Atomic"  ] << "Number | '(' Sum ')'";
   g["Add"     ] << "Sum '+' Product"    >> [](auto e){ return e[0].evaluate() + e[1].evaluate(); };
   g["Subtract"] << "Sum '-' Product"    >> [](auto e){ return e[0].evaluate() - e[1].evaluate(); };
