@@ -35,9 +35,22 @@ int main() {
    void visitAssignment(Expression name, Expression value) {
      result = (variables[name.string()] = getValue(value));
    }
-   void visitDecimalNumber(Expression value) { result = stod(value.string()); }
-   void visitHexadecimalNumber(Expression value) { result = stod(value.string()); }
-   void visitBinaryNumber(Expression value) { result = stod(value.string()); }
+
+   void visitDecimalNumber(Expression value) {
+     result = stod(value.string());
+   }
+   void visitHexadecimalNumber(Expression value) {
+     result = stod(value.string());
+   }
+   void visitBinaryNumber(Expression value) {
+     result = stod(value.string());
+   }
+
+   void visitParentheses(Expression name) { result = variables[name.string()]; }
+   void visitExpressionPlus(Expression l, Expression r) { result = getValue(l) + getValue(r); }
+   void visitExpressionMinus(Expression l, Expression r) { result = getValue(l) - getValue(r); }
+   void visitMultiplyingExpressionTimes(Expression l, Expression r) { result = getValue(l) * getValue(r); }
+   void visitMultiplyingExpressionDivision(Expression l, Expression r) { result = getValue(l) / getValue(r); }
  };
 
  peg_parser::ParserGenerator<void, Visitor &> calculator;
@@ -51,9 +64,21 @@ int main() {
 
   g["Variable"] << "Name" >> [](auto e, auto &v) { v.visitVariable(e); };
 
-  g["Expression"] << "MultiplyingExpression ((Plus | Minus) MultiplyingExpression)*";
+  g["Expression"] << "ExpressionPlus | ExpressionMinus";
 
-  g["MultiplyingExpression"] << "PowerExpression ((Times | Division) PowerExpression)*";
+  g["ExpressionPlus"] << "MultiplyingExpression (Plus MultiplyingExpression)*"
+      >> [](auto e, auto &v) { v.visitExpressionPlus(e[0], e[1]); };
+
+  g["ExpressionMinus"] << "MultiplyingExpression (Minus MultiplyingExpression)*"
+      >> [](auto e, auto &v) { v.visitExpressionMinus(e[0], e[1]); };
+
+  g["MultiplyingExpression"] << "MultiplyingExpressionTimes | MultiplyingExpressionDivision";
+
+  g["MultiplyingExpressionTimes"] << "PowerExpression (Times PowerExpression)*"
+      >> [](auto e, auto &v) { v.visitMultiplyingExpressionTimes(e[0], e[1]); };
+
+  g["MultiplyingExpressionDivision"] << "PowerExpression (Division PowerExpression)*"
+      >> [](auto e, auto &v) { v.visitMultiplyingExpressionDivision(e[0], e[1]); };
 
   g["PowerExpression"] << "SignedAtom (Power SignedAtom)*";
 
@@ -65,28 +90,34 @@ int main() {
 
   g["Function"] << "Cos | Sin";
 
-  g["Parentheses"] << "Lparen Expression Rparen";
+  g["Parentheses"] << "Lparen Expression Rparen" >>
+      [](auto e, auto &v) { v.visitParentheses(e); };
 
   g["Variable"] << "Name" >> [](auto e, auto &v) { v.visitVariable(e); };
 
   g["Number"] << "DecimalNumber | HexadecimalNumber | BinaryNumber";
 
-  g["DecimalNumber"] << "Minus? [0-9]+ ('.' [0-9]+)?" >> [](auto e, auto &v) { v.visitDecimalNumber(e); };
-  g["HexadecimalNumber"] << "'0x' ('0' | '9' | 'A' | 'F')+" >> [](auto e, auto &v) { v.visitHexadecimalNumber(e); };
-  g["BinaryNumber"] << "('0' | '1')+ 'b'" >> [](auto e, auto &v) { v.visitBinaryNumber(e); };
+  g["DecimalNumber"] << "Minus? [0-9]+ ('.' [0-9]+)?" >>
+      [](auto e, auto &v) { v.visitDecimalNumber(e); };
 
-  g["Name"] << "[a-zA-Z]+";
-  g["Header"] << "'----'";
-  g["Eq"] << "'='";
-  g["Cos"] << "'cos'";
-  g["Sin"] << "'sin'";
-  g["Lparen"] << "'('";
-  g["Rparen"] << "')'";
-  g["Plus"] << "'+'";
-  g["Minus"] << "'-'";
-  g["Times"] << "'*'";
-  g["Division"] << "'/'";
-  g["Power"] << "'^'";
+  g["HexadecimalNumber"] << "'0x' ('0' | '9' | 'A' | 'F')+" >>
+      [](auto e, auto &v) { v.visitHexadecimalNumber(e); };
+
+  g["BinaryNumber"] << "('0' | '1')+ 'b'" >>
+      [](auto e, auto &v) { v.visitBinaryNumber(e); };
+
+  g["Name"      ] << "[a-zA-Z]+";
+  g["Header"    ] << "'----'";
+  g["Eq"        ] << "'='";
+  g["Cos"       ] << "'cos'";
+  g["Sin"       ] << "'sin'";
+  g["Lparen"    ] << "'('";
+  g["Rparen"    ] << "')'";
+  g["Plus"      ] << "'+'";
+  g["Minus"     ] << "'-'";
+  g["Times"     ] << "'*'";
+  g["Division"  ] << "'/'";
+  g["Power"     ] << "'^'";
 
   g.setStart(g["Session"]);
 
