@@ -1,33 +1,162 @@
-//
-// Created by leber on 11/16/21.
-//
+/**
+*  This example demonstrate how we can use peg_parser::parser to define a
+* command-line calculator and use a visitor pattern to evaluate the result.
+*/
+
 #include <peg_parser/generator.h>
+
+#include <cmath>
 #include <iostream>
+#include <unordered_map>
 
 int main() {
-  peg_parser::ParserGenerator<float> g;
+  using namespace std;
 
-  // Define grammar and evaluation rules
+  struct Visitor;
+
+  using Expression = peg_parser::Interpreter<void, Visitor &>::Expression;
+
+  struct Visitor {
+
+    float result{};
+    unordered_map<string, float> variables;
+
+    float getValue(Expression &e) {
+      e.evaluate(*this);
+      return result;
+    }
+
+    void visitAddition(Expression l, Expression r) {
+      result = getValue(l) + getValue(r);
+    }
+    void visitSubtraction(Expression l, Expression r) {
+      result = getValue(l) - getValue(r);
+    }
+    void visitMultiplication(Expression l, Expression r) {
+      result = getValue(l) * getValue(r);
+    }
+    void visitDivision(Expression l, Expression r) {
+      result = getValue(l) / getValue(r);
+    }
+    void visitPower(Expression l, Expression r) {
+      result = pow(getValue(l), getValue(r));
+    }
+
+    void visitVariable(const Expression& name) {
+      result = variables[name.string()];
+    }
+    void visitAssignment(const Expression& name, Expression value) {
+      variables[name.string()] = getValue(value);
+    }
+    void visitDecimalNumber(const Expression& value) {
+      result = stof(value.string());
+    }
+    void visitHexadecimalNumber(const Expression& value) {
+      result = stof(value.string());
+    }
+    void visitBinaryNumber(const Expression& value) {
+      string binary = value.string();
+      binary.pop_back();
+      result = (float) stoi(binary, nullptr, 2);
+    }
+
+    void visitSin(Expression value) {
+      result = sin(getValue(value));
+    }
+    void visitCos(Expression value) {
+      result = cos(getValue(value));
+    }
+
+    void visitHeader() {
+      result = {};
+      variables = unordered_map<string, float>();
+    }
+  };
+
+  peg_parser::ParserGenerator<void, Visitor &> calculator;
+
+  auto &g = calculator;
+
   g.setSeparator(g["Whitespace"] << "[\t ]");
 
-  g["Session"     ] << "Header | Equation";
-  g["Header" ] << "'----'";
-  g["Equation" ] << "(Variable EQ)? Expression";
-  g["EQ" ] << "'='";
+  g["Session"] << "Expression | Header";
 
-  g["Atomic"  ] << "Number | '(' Sum ')'";
-  g["Add"     ] << "Sum '+' Product"    >> [](auto e){ return e[0].evaluate() + e[1].evaluate(); };
-  g["Subtract"] << "Sum '-' Product"    >> [](auto e){ return e[0].evaluate() - e[1].evaluate(); };
-  g["Multiply"] << "Product '*' Atomic" >> [](auto e){ return e[0].evaluate() * e[1].evaluate(); };
-  g["Divide"  ] << "Product '/' Atomic" >> [](auto e){ return e[0].evaluate() / e[1].evaluate(); };
-  g["Number"  ] << "'-'? [0-9]+ ('.' [0-9]+)?" >> [](auto e){ return stof(e.string()); };
+  g["Header"] << "'-'+" >>
+      [](auto e, auto &v) { v.visitHeader(); };
 
-  g.setStart(g["Sum"]);
+  g["Expression"] << "Assignment | Equation";
 
-  // Execute a string
-  auto input = "1 + 2 * (3+4)/2 - 3";
-  float result = g.run(input); // -> 5
-  std::cout << input << " = " << result << std::endl;
+  g["Assignment"] << "Name '=' Equation" >>
+      [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
 
-  return 0;
+  g["Equation"] << "Add | Subtract | Product";
+
+  g["Product"] << "Multiply | Divide | Exponent";
+
+  g["Exponent"] << "Power | Atomic";
+
+  g["Atomic"] << "Number | Brackets | Functions | Variable";
+
+  g["Brackets"] << "'(' Equation ')'";
+
+  g["Functions"] << "Sin | Cos";
+
+  g["Sin"] << "'sin' Brackets" >>
+      [](auto e, auto &v) { v.visitSin(e[0]); };
+
+  g["Cos"] << "'cos' Brackets" >>
+      [](auto e, auto &v) { v.visitCos(e[0]); };
+
+  g["Add"] << "Equation '+' Product" >>
+      [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
+
+  g["Subtract"] << "Equation '-' Product" >>
+      [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
+
+  g["Multiply"] << "Product '*' Exponent" >>
+      [](auto e, auto &v) { v.visitMultiplication(e[0], e[1]); };
+
+  g["Divide"] << "Product '/' Exponent" >>
+      [](auto e, auto &v) { v.visitDivision(e[0], e[1]); };
+
+  g["Power"] << "Atomic ('^' Exponent)" >>
+      [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
+
+  g["Variable"] << "Name" >>
+      [](auto e, auto &v) { v.visitVariable(e); };
+
+  g["Name"] << "[a-zA-Z]+";
+
+  g["Number"] << "HexadecimalNumber | BinaryNumber | DecimalNumber";
+
+  g["DecimalNumber"] << "'-'? [0-9]+ ('.' [0-9]+)?" >>
+      [](auto e, auto &v) { v.visitDecimalNumber(e); };
+
+  g["HexadecimalNumber"] << "'0x' [0-9a-fA-F]+" >>
+      [](auto e, auto &v) { v.visitHexadecimalNumber(e); };
+
+  g["BinaryNumber"] << "[0-1]+ 'b'" >>
+      [](auto e, auto &v) { v.visitBinaryNumber(e); };
+
+  g.setStart(g["Session"]);
+
+  Visitor visitor;
+  string input;
+
+  while (true) {
+
+    cout << "Input: ";
+    getline(cin, input);
+
+    try {
+
+      calculator.run(input, visitor);
+      cout << "Output: " << visitor.result << endl;
+
+    } catch (peg_parser::SyntaxError &error) {
+
+      cout << "*** Syntax error while parsing " << error.syntax->rule->name << endl;
+
+    }
+  }
 }
