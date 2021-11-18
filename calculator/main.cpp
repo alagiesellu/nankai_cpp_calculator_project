@@ -18,10 +18,10 @@ int main() {
 
  struct Visitor {
 
-   float result;
+   float result{};
    unordered_map<string, float> variables;
 
-   float getValue(Expression e) {
+   float getValue(Expression &e) {
      e.evaluate(*this);
      return result;
    }
@@ -29,42 +29,35 @@ int main() {
    void visitAddition(Expression l, Expression r) {
      result = getValue(l) + getValue(r);
    }
-
    void visitSubtraction(Expression l, Expression r) {
      result = getValue(l) - getValue(r);
    }
-
    void visitMultiplication(Expression l, Expression r) {
      result = getValue(l) * getValue(r);
    }
-
    void visitDivision(Expression l, Expression r) {
      result = getValue(l) / getValue(r);
    }
-
    void visitPower(Expression l, Expression r) {
      result = pow(getValue(l), getValue(r));
    }
 
-   void visitVariable(Expression name) {
+   void visitVariable(const Expression& name) {
      result = variables[name.string()];
    }
-
-   void visitAssignment(Expression name, Expression value) {
+   void visitAssignment(const Expression& name, Expression value) {
      variables[name.string()] = getValue(value);
    }
-   void visitDecimalNumber(Expression value) {
-     result = stod(value.string());
+   void visitDecimalNumber(const Expression& value) {
+     result = stof(value.string());
    }
-
-   void visitHexadecimalNumber(Expression value) {
-     result = stod(value.string());
+   void visitHexadecimalNumber(const Expression& value) {
+     result = stof(value.string());
    }
-
-   void visitBinaryNumber(Expression value) {
+   void visitBinaryNumber(const Expression& value) {
      string binary = value.string();
      binary.pop_back();
-     result = stoi(binary, 0, 2);
+     result = (float) stoi(binary, nullptr, 2);
    }
 
    void visitSin(Expression value) {
@@ -73,8 +66,9 @@ int main() {
    void visitCos(Expression value) {
      result = cos(getValue(value));
    }
+
    void visitHeader() {
-     result = 0;
+     result = {};
      variables = unordered_map<string, float>();
    }
  };
@@ -145,22 +139,25 @@ int main() {
 
  Visitor visitor;
 
+  string input;
  while (true) {
-   string input;
 
    cout << "Input: ";
    getline(cin, input);
 
    try {
+
      calculator.run(input, visitor);
      cout << "Output: " << visitor.result << endl;
+
    } catch (peg_parser::SyntaxError &error) {
+
      auto syntax = error.syntax;
      cout << "  ";
      cout << string(syntax->begin, ' ');
      cout << string(syntax->length(), '~');
      cout << "^\n";
-     cout << "  " << "Syntax error while parsing " << syntax->rule->name << endl;
+     cout << "  Syntax error while parsing " << syntax->rule->name << endl;
    }
  }
 
