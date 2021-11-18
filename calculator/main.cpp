@@ -17,6 +17,7 @@ int main() {
  using Expression = peg_parser::Interpreter<void, Visitor &>::Expression;
 
  struct Visitor {
+
    float result;
    unordered_map<string, float> variables;
 
@@ -25,23 +26,37 @@ int main() {
      return result;
    }
 
-   void visitAddition(Expression l, Expression r) { result = getValue(l) + getValue(r); }
-   void visitSubtraction(Expression l, Expression r) { result = getValue(l) - getValue(r); }
-   void visitMultiplication(Expression l, Expression r) { result = getValue(l) * getValue(r); }
-   void visitDivision(Expression l, Expression r) { result = getValue(l) / getValue(r); }
-   void visitPower(Expression l, Expression r) { result = pow(getValue(l), getValue(r)); }
+   void visitAddition(Expression l, Expression r) {
+     result = getValue(l) + getValue(r);
+   }
+
+   void visitSubtraction(Expression l, Expression r) {
+     result = getValue(l) - getValue(r);
+   }
+
+   void visitMultiplication(Expression l, Expression r) {
+     result = getValue(l) * getValue(r);
+   }
+
+   void visitDivision(Expression l, Expression r) {
+     result = getValue(l) / getValue(r);
+   }
+
+   void visitPower(Expression l, Expression r) {
+     result = pow(getValue(l), getValue(r));
+   }
 
    void visitVariable(Expression name) {
      result = variables[name.string()];
    }
 
    void visitAssignment(Expression name, Expression value) {
-
-     float assignedValue = getValue(value);
-
-     variables[name.string()] = assignedValue;
+     variables[name.string()] = getValue(value);
    }
-   void visitDecimalNumber(Expression value) { result = stod(value.string()); }
+   void visitDecimalNumber(Expression value) {
+     result = stod(value.string());
+   }
+
    void visitHexadecimalNumber(Expression value) {
      result = stod(value.string());
    }
@@ -70,24 +85,49 @@ int main() {
  g.setSeparator(g["Whitespace"] << "[\t ]");
 
   g["Session"] << "Expression | Header";
+
   g["Header"] << "'-'+" >> [](auto e, auto &v) { v.visitHeader(); };
+
   g["Expression"] << "Assign | Sum";
+
  g["Assign"] << "Name '=' Sum" >> [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
+
  g["Sum"] << "Add | Subtract | Product";
+
  g["Product"] << "Multiply | Divide | Exponent";
+
  g["Exponent"] << "Power | Atomic";
+
  g["Atomic"] << "Number | Brackets | Functions | Variable";
+
  g["Brackets"] << "'(' Sum ')'";
+
  g["Functions"] << "Sin | Cos";
- g["Sin"] << "'sin' Brackets" >> [](auto e, auto &v) { v.visitSin(e[0]); };
- g["Cos"] << "'cos' Brackets" >> [](auto e, auto &v) { v.visitCos(e[0]); };
- g["Add"] << "Sum '+' Product" >> [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
- g["Subtract"] << "Sum '-' Product" >> [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
+
+ g["Sin"] << "'sin' Brackets" >>
+     [](auto e, auto &v) { v.visitSin(e[0]); };
+
+ g["Cos"] << "'cos' Brackets" >>
+     [](auto e, auto &v) { v.visitCos(e[0]); };
+
+ g["Add"] << "Sum '+' Product" >>
+     [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
+
+ g["Subtract"] << "Sum '-' Product" >>
+     [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
+
  g["Multiply"] << "Product '*' Exponent" >>
      [](auto e, auto &v) { v.visitMultiplication(e[0], e[1]); };
- g["Divide"] << "Product '/' Exponent" >> [](auto e, auto &v) { v.visitDivision(e[0], e[1]); };
- g["Power"] << "Atomic ('^' Exponent)" >> [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
- g["Variable"] << "Name" >> [](auto e, auto &v) { v.visitVariable(e); };
+
+ g["Divide"] << "Product '/' Exponent" >>
+     [](auto e, auto &v) { v.visitDivision(e[0], e[1]); };
+
+ g["Power"] << "Atomic ('^' Exponent)" >>
+     [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
+
+ g["Variable"] << "Name" >>
+     [](auto e, auto &v) { v.visitVariable(e); };
+
  g["Name"] << "[a-zA-Z]+";
 
  g["Number"] << "HexadecimalNumber | BinaryNumber | DecimalNumber";
@@ -103,26 +143,24 @@ int main() {
 
  g.setStart(g["Session"]);
 
- cout << "Enter an expression to be evaluated.\n";
-
  Visitor visitor;
 
  while (true) {
    string input;
 
+   cout << "Input: ";
    getline(cin, input);
 
    try {
      calculator.run(input, visitor);
-     cout << visitor.result << endl;
+     cout << "Output: " << visitor.result << endl;
    } catch (peg_parser::SyntaxError &error) {
      auto syntax = error.syntax;
      cout << "  ";
      cout << string(syntax->begin, ' ');
      cout << string(syntax->length(), '~');
      cout << "^\n";
-     cout << "  "
-          << "Syntax error while parsing " << syntax->rule->name << endl;
+     cout << "  " << "Syntax error while parsing " << syntax->rule->name << endl;
    }
  }
 
