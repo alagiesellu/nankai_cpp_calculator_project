@@ -76,15 +76,18 @@ int main() {
   peg_parser::ParserGenerator<void, Visitor &> calculator;
 
   auto &g = calculator;
+
   g.setSeparator(g["Whitespace"] << "[\t ]");
 
   g["Session"] << "Expression | Header";
 
-  g["Header"] << "'-'+" >> [](auto e, auto &v) { v.visitHeader(); };
+  g["Header"] << "'-'+" >>
+      [](auto e, auto &v) { v.visitHeader(); };
 
   g["Expression"] << "Assign | Sum";
 
-  g["Assign"] << "Name '=' Sum" >> [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
+  g["Assign"] << "Name '=' Sum" >>
+      [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
 
   g["Sum"] << "Add | Subtract | Product";
 
