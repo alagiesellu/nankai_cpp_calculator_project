@@ -25,10 +25,6 @@ int main() {
      return result;
    }
 
-   void visitAddition(Expression l, Expression r) { result = getValue(l) + getValue(r); }
-   void visitSubtraction(Expression l, Expression r) { result = getValue(l) - getValue(r); }
-   void visitMultiplication(Expression l, Expression r) { result = getValue(l) * getValue(r); }
-   void visitDivision(Expression l, Expression r) { result = getValue(l) / getValue(r); }
    void visitPower(Expression l, Expression r) { result = pow(getValue(l), getValue(r)); }
    void visitVariable(Expression name) { result = variables[name.string()]; }
 
@@ -46,11 +42,13 @@ int main() {
      result = stod(value.string());
    }
 
-   void visitParentheses(Expression name) { result = variables[name.string()]; }
    void visitExpressionPlus(Expression l, Expression r) { result = getValue(l) + getValue(r); }
    void visitExpressionMinus(Expression l, Expression r) { result = getValue(l) - getValue(r); }
    void visitMultiplyingExpressionTimes(Expression l, Expression r) { result = getValue(l) * getValue(r); }
    void visitMultiplyingExpressionDivision(Expression l, Expression r) { result = getValue(l) / getValue(r); }
+
+   void visitCos(Expression e) { result = cos(getValue(e)); }
+   void visitSin(Expression e) { result = sin(getValue(e)); }
  };
 
  peg_parser::ParserGenerator<void, Visitor &> calculator;
@@ -58,46 +56,48 @@ int main() {
  auto &g = calculator;
  g.setSeparator(g["Whitespace"] << "[\t ]");
 
-  g["Session"] << "Header | Equation";
+  g["Session"] << "Header | Expression";
 
-  g["Equation"] << "(Variable EQ)? Expression";
+  g["Expression"] << "Assignment | AlgebraicExpression";
 
-  g["Variable"] << "Name" >> [](auto e, auto &v) { v.visitVariable(e); };
+  g["Assignment"] << "Variable '=' AlgebraicExpression"
+      >> [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
 
-  g["Expression"] << "ExpressionPlus | ExpressionMinus";
+  g["Variable"] << "[a-zA-Z]+"
+      >> [](auto e, auto &v) { v.visitVariable(e); };
 
-  g["ExpressionPlus"] << "MultiplyingExpression (Plus MultiplyingExpression)*"
+  g["AlgebraicExpression"] << "ExpressionPlus | ExpressionMinus";
+
+  g["ExpressionPlus"] << "MultiplyingExpression ('+' MultiplyingExpression)"
       >> [](auto e, auto &v) { v.visitExpressionPlus(e[0], e[1]); };
 
-  g["ExpressionMinus"] << "MultiplyingExpression (Minus MultiplyingExpression)*"
+  g["ExpressionMinus"] << "MultiplyingExpression ('-' MultiplyingExpression)"
       >> [](auto e, auto &v) { v.visitExpressionMinus(e[0], e[1]); };
 
   g["MultiplyingExpression"] << "MultiplyingExpressionTimes | MultiplyingExpressionDivision";
 
-  g["MultiplyingExpressionTimes"] << "PowerExpression (Times PowerExpression)*"
+  g["MultiplyingExpressionTimes"] << "PowerExpression ('*' PowerExpression)"
       >> [](auto e, auto &v) { v.visitMultiplyingExpressionTimes(e[0], e[1]); };
 
-  g["MultiplyingExpressionDivision"] << "PowerExpression (Division PowerExpression)*"
+  g["MultiplyingExpressionDivision"] << "PowerExpression ('/' PowerExpression)"
       >> [](auto e, auto &v) { v.visitMultiplyingExpressionDivision(e[0], e[1]); };
 
-  g["PowerExpression"] << "SignedAtom (Power SignedAtom)*";
+  g["PowerExpression"] << "SignedAtom ('^' SignedAtom)"
+      >> [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
 
   g["SignedAtom"] << "FunctionExpression | Atom";
 
-  g["FunctionExpression"] << "Function Parentheses";
+//  g["FunctionExpression"] << "Function Parentheses";
 
   g["Atom"] << "Number | Parentheses";
 
-  g["Function"] << "Cos | Sin";
+  g["FunctionExpression"] << "CosExpression | SinExpression";
 
-  g["Parentheses"] << "Lparen Expression Rparen" >>
-      [](auto e, auto &v) { v.visitParentheses(e); };
-
-  g["Variable"] << "Name" >> [](auto e, auto &v) { v.visitVariable(e); };
+  g["Parentheses"] << "'(' Expression ')'";
 
   g["Number"] << "DecimalNumber | HexadecimalNumber | BinaryNumber";
 
-  g["DecimalNumber"] << "Minus? [0-9]+ ('.' [0-9]+)?" >>
+  g["DecimalNumber"] << "'-'? [0-9]+ ('.' [0-9]+)?" >>
       [](auto e, auto &v) { v.visitDecimalNumber(e); };
 
   g["HexadecimalNumber"] << "'0x' ('0' | '9' | 'A' | 'F')+" >>
@@ -106,18 +106,13 @@ int main() {
   g["BinaryNumber"] << "('0' | '1')+ 'b'" >>
       [](auto e, auto &v) { v.visitBinaryNumber(e); };
 
-  g["Name"      ] << "[a-zA-Z]+";
+  g["CosExpression"       ] << "'cos' Parentheses" >>
+      [](auto e, auto &v) { v.visitCos(e); };
+
+  g["SinExpression"       ] << "'sin' Parentheses" >>
+      [](auto e, auto &v) { v.visitSin(e); };
+
   g["Header"    ] << "'----'";
-  g["Eq"        ] << "'='";
-  g["Cos"       ] << "'cos'";
-  g["Sin"       ] << "'sin'";
-  g["Lparen"    ] << "'('";
-  g["Rparen"    ] << "')'";
-  g["Plus"      ] << "'+'";
-  g["Minus"     ] << "'-'";
-  g["Times"     ] << "'*'";
-  g["Division"  ] << "'/'";
-  g["Power"     ] << "'^'";
 
   g.setStart(g["Session"]);
 

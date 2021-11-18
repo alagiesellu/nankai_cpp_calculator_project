@@ -34,7 +34,12 @@ int main() {
     void visitAssignment(Expression name, Expression value) {
       result = (variables[name.string()] = getValue(value));
     }
-    void visitNumber(Expression value) { result = stod(value.string()); }
+    void visitDecimalNumber(Expression value) { result = stod(value.string()); }
+    void visitHexadecimalNumber(Expression value) { result = stod(value.string()); }
+    void visitBinaryNumber(Expression value) { result = stod(value.string()); }
+
+    void visitSin(Expression value) { result = sin(getValue(value)); }
+    void visitCos(Expression value) { result = cos(getValue(value)); }
   };
 
   peg_parser::ParserGenerator<void, Visitor &> calculator;
@@ -47,8 +52,11 @@ int main() {
   g["Sum"] << "Add | Subtract | Product";
   g["Product"] << "Multiply | Divide | Exponent";
   g["Exponent"] << "Power | Atomic";
-  g["Atomic"] << "Number | Brackets | Variable";
+  g["Atomic"] << "Number | Brackets | Functions | Variable";
   g["Brackets"] << "'(' Sum ')'";
+  g["Functions"] << "Sin | Cos";
+  g["Sin"] << "'sin' Brackets" >> [](auto e, auto &v) { v.visitSin(e); };
+  g["Cos"] << "'cos' Brackets" >> [](auto e, auto &v) { v.visitCos(e); };
   g["Add"] << "Sum '+' Product" >> [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
   g["Subtract"] << "Sum '-' Product" >> [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
   g["Multiply"] << "Product '*' Exponent" >>
@@ -56,8 +64,18 @@ int main() {
   g["Divide"] << "Product '/' Exponent" >> [](auto e, auto &v) { v.visitDivision(e[0], e[1]); };
   g["Power"] << "Atomic ('^' Exponent)" >> [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
   g["Variable"] << "Name" >> [](auto e, auto &v) { v.visitVariable(e); };
-  g["Name"] << "[a-zA-Z] [a-zA-Z0-9]*";
-  g["Number"] << "'-'? [0-9]+ ('.' [0-9]+)?" >> [](auto e, auto &v) { v.visitNumber(e); };
+  g["Name"] << "[a-zA-Z]*";
+
+  g["Number"] << "DecimalNumber | HexadecimalNumber | BinaryNumber";
+
+  g["DecimalNumber"] << "'-'? [0-9]+ ('.' [0-9]+)?" >>
+      [](auto e, auto &v) { v.visitDecimalNumber(e); };
+
+  g["HexadecimalNumber"] << "'0x' ('0' | '9' | 'A' | 'F')+" >>
+      [](auto e, auto &v) { v.visitHexadecimalNumber(e); };
+
+  g["BinaryNumber"] << "('0' | '1')+ 'b'" >>
+      [](auto e, auto &v) { v.visitBinaryNumber(e); };
 
   g.setStart(g["Expression"]);
 
