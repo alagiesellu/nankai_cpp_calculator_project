@@ -155,12 +155,8 @@ int main() {
 
     } catch (peg_parser::SyntaxError &error) {
 
-      auto syntax = error.syntax;
-      cout << "  ";
-      cout << string(syntax->begin, ' ');
-      cout << string(syntax->length(), '~');
-      cout << "^\n";
-      cout << "  Syntax error while parsing " << syntax->rule->name << endl;
+      cout << "*** Syntax error while parsing " << error.syntax->rule->name << endl;
+
     }
   }
 }
