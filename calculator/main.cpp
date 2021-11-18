@@ -84,12 +84,12 @@ int main() {
   g["Header"] << "'-'+" >>
       [](auto e, auto &v) { v.visitHeader(); };
 
-  g["Expression"] << "Assign | Sum";
+  g["Expression"] << "Assignment | Equation";
 
-  g["Assign"] << "Name '=' Sum" >>
+  g["Assignment"] << "Name '=' Equation" >>
       [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
 
-  g["Sum"] << "Add | Subtract | Product";
+  g["Equation"] << "Add | Subtract | Product";
 
   g["Product"] << "Multiply | Divide | Exponent";
 
@@ -97,7 +97,7 @@ int main() {
 
   g["Atomic"] << "Number | Brackets | Functions | Variable";
 
-  g["Brackets"] << "'(' Sum ')'";
+  g["Brackets"] << "'(' Equation ')'";
 
   g["Functions"] << "Sin | Cos";
 
@@ -107,10 +107,10 @@ int main() {
   g["Cos"] << "'cos' Brackets" >>
       [](auto e, auto &v) { v.visitCos(e[0]); };
 
-  g["Add"] << "Sum '+' Product" >>
+  g["Add"] << "Equation '+' Product" >>
       [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
 
-  g["Subtract"] << "Sum '-' Product" >>
+  g["Subtract"] << "Equation '-' Product" >>
       [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
 
   g["Multiply"] << "Product '*' Exponent" >>
