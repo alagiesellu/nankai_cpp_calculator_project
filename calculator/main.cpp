@@ -10,73 +10,73 @@
 #include <unordered_map>
 
 int main() {
- using namespace std;
+  using namespace std;
 
- struct Visitor;
+  struct Visitor;
 
- using Expression = peg_parser::Interpreter<void, Visitor &>::Expression;
+  using Expression = peg_parser::Interpreter<void, Visitor &>::Expression;
 
- struct Visitor {
+  struct Visitor {
 
-   float result{};
-   unordered_map<string, float> variables;
+    float result{};
+    unordered_map<string, float> variables;
 
-   float getValue(Expression &e) {
-     e.evaluate(*this);
-     return result;
-   }
+    float getValue(Expression &e) {
+      e.evaluate(*this);
+      return result;
+    }
 
-   void visitAddition(Expression l, Expression r) {
-     result = getValue(l) + getValue(r);
-   }
-   void visitSubtraction(Expression l, Expression r) {
-     result = getValue(l) - getValue(r);
-   }
-   void visitMultiplication(Expression l, Expression r) {
-     result = getValue(l) * getValue(r);
-   }
-   void visitDivision(Expression l, Expression r) {
-     result = getValue(l) / getValue(r);
-   }
-   void visitPower(Expression l, Expression r) {
-     result = pow(getValue(l), getValue(r));
-   }
+    void visitAddition(Expression l, Expression r) {
+      result = getValue(l) + getValue(r);
+    }
+    void visitSubtraction(Expression l, Expression r) {
+      result = getValue(l) - getValue(r);
+    }
+    void visitMultiplication(Expression l, Expression r) {
+      result = getValue(l) * getValue(r);
+    }
+    void visitDivision(Expression l, Expression r) {
+      result = getValue(l) / getValue(r);
+    }
+    void visitPower(Expression l, Expression r) {
+      result = pow(getValue(l), getValue(r));
+    }
 
-   void visitVariable(const Expression& name) {
-     result = variables[name.string()];
-   }
-   void visitAssignment(const Expression& name, Expression value) {
-     variables[name.string()] = getValue(value);
-   }
-   void visitDecimalNumber(const Expression& value) {
-     result = stof(value.string());
-   }
-   void visitHexadecimalNumber(const Expression& value) {
-     result = stof(value.string());
-   }
-   void visitBinaryNumber(const Expression& value) {
-     string binary = value.string();
-     binary.pop_back();
-     result = (float) stoi(binary, nullptr, 2);
-   }
+    void visitVariable(const Expression& name) {
+      result = variables[name.string()];
+    }
+    void visitAssignment(const Expression& name, Expression value) {
+      variables[name.string()] = getValue(value);
+    }
+    void visitDecimalNumber(const Expression& value) {
+      result = stof(value.string());
+    }
+    void visitHexadecimalNumber(const Expression& value) {
+      result = stof(value.string());
+    }
+    void visitBinaryNumber(const Expression& value) {
+      string binary = value.string();
+      binary.pop_back();
+      result = (float) stoi(binary, nullptr, 2);
+    }
 
-   void visitSin(Expression value) {
-     result = sin(getValue(value));
-   }
-   void visitCos(Expression value) {
-     result = cos(getValue(value));
-   }
+    void visitSin(Expression value) {
+      result = sin(getValue(value));
+    }
+    void visitCos(Expression value) {
+      result = cos(getValue(value));
+    }
 
-   void visitHeader() {
-     result = {};
-     variables = unordered_map<string, float>();
-   }
- };
+    void visitHeader() {
+      result = {};
+      variables = unordered_map<string, float>();
+    }
+  };
 
- peg_parser::ParserGenerator<void, Visitor &> calculator;
+  peg_parser::ParserGenerator<void, Visitor &> calculator;
 
- auto &g = calculator;
- g.setSeparator(g["Whitespace"] << "[\t ]");
+  auto &g = calculator;
+  g.setSeparator(g["Whitespace"] << "[\t ]");
 
   g["Session"] << "Expression | Header";
 
@@ -84,82 +84,80 @@ int main() {
 
   g["Expression"] << "Assign | Sum";
 
- g["Assign"] << "Name '=' Sum" >> [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
+  g["Assign"] << "Name '=' Sum" >> [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
 
- g["Sum"] << "Add | Subtract | Product";
+  g["Sum"] << "Add | Subtract | Product";
 
- g["Product"] << "Multiply | Divide | Exponent";
+  g["Product"] << "Multiply | Divide | Exponent";
 
- g["Exponent"] << "Power | Atomic";
+  g["Exponent"] << "Power | Atomic";
 
- g["Atomic"] << "Number | Brackets | Functions | Variable";
+  g["Atomic"] << "Number | Brackets | Functions | Variable";
 
- g["Brackets"] << "'(' Sum ')'";
+  g["Brackets"] << "'(' Sum ')'";
 
- g["Functions"] << "Sin | Cos";
+  g["Functions"] << "Sin | Cos";
 
- g["Sin"] << "'sin' Brackets" >>
-     [](auto e, auto &v) { v.visitSin(e[0]); };
+  g["Sin"] << "'sin' Brackets" >>
+      [](auto e, auto &v) { v.visitSin(e[0]); };
 
- g["Cos"] << "'cos' Brackets" >>
-     [](auto e, auto &v) { v.visitCos(e[0]); };
+  g["Cos"] << "'cos' Brackets" >>
+      [](auto e, auto &v) { v.visitCos(e[0]); };
 
- g["Add"] << "Sum '+' Product" >>
-     [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
+  g["Add"] << "Sum '+' Product" >>
+      [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
 
- g["Subtract"] << "Sum '-' Product" >>
-     [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
+  g["Subtract"] << "Sum '-' Product" >>
+      [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
 
- g["Multiply"] << "Product '*' Exponent" >>
-     [](auto e, auto &v) { v.visitMultiplication(e[0], e[1]); };
+  g["Multiply"] << "Product '*' Exponent" >>
+      [](auto e, auto &v) { v.visitMultiplication(e[0], e[1]); };
 
- g["Divide"] << "Product '/' Exponent" >>
-     [](auto e, auto &v) { v.visitDivision(e[0], e[1]); };
+  g["Divide"] << "Product '/' Exponent" >>
+      [](auto e, auto &v) { v.visitDivision(e[0], e[1]); };
 
- g["Power"] << "Atomic ('^' Exponent)" >>
-     [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
+  g["Power"] << "Atomic ('^' Exponent)" >>
+      [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
 
- g["Variable"] << "Name" >>
-     [](auto e, auto &v) { v.visitVariable(e); };
+  g["Variable"] << "Name" >>
+      [](auto e, auto &v) { v.visitVariable(e); };
 
- g["Name"] << "[a-zA-Z]+";
+  g["Name"] << "[a-zA-Z]+";
 
- g["Number"] << "HexadecimalNumber | BinaryNumber | DecimalNumber";
+  g["Number"] << "HexadecimalNumber | BinaryNumber | DecimalNumber";
 
- g["DecimalNumber"] << "'-'? [0-9]+ ('.' [0-9]+)?" >>
-     [](auto e, auto &v) { v.visitDecimalNumber(e); };
+  g["DecimalNumber"] << "'-'? [0-9]+ ('.' [0-9]+)?" >>
+      [](auto e, auto &v) { v.visitDecimalNumber(e); };
 
- g["HexadecimalNumber"] << "'0x' [0-9a-fA-F]+" >>
-     [](auto e, auto &v) { v.visitHexadecimalNumber(e); };
+  g["HexadecimalNumber"] << "'0x' [0-9a-fA-F]+" >>
+      [](auto e, auto &v) { v.visitHexadecimalNumber(e); };
 
- g["BinaryNumber"] << "[0-1]+ 'b'" >>
-     [](auto e, auto &v) { v.visitBinaryNumber(e); };
+  g["BinaryNumber"] << "[0-1]+ 'b'" >>
+      [](auto e, auto &v) { v.visitBinaryNumber(e); };
 
- g.setStart(g["Session"]);
+  g.setStart(g["Session"]);
 
- Visitor visitor;
-
+  Visitor visitor;
   string input;
- while (true) {
 
-   cout << "Input: ";
-   getline(cin, input);
+  while (true) {
 
-   try {
+    cout << "Input: ";
+    getline(cin, input);
 
-     calculator.run(input, visitor);
-     cout << "Output: " << visitor.result << endl;
+    try {
 
-   } catch (peg_parser::SyntaxError &error) {
+      calculator.run(input, visitor);
+      cout << "Output: " << visitor.result << endl;
 
-     auto syntax = error.syntax;
-     cout << "  ";
-     cout << string(syntax->begin, ' ');
-     cout << string(syntax->length(), '~');
-     cout << "^\n";
-     cout << "  Syntax error while parsing " << syntax->rule->name << endl;
-   }
- }
+    } catch (peg_parser::SyntaxError &error) {
 
- return 0;
+      auto syntax = error.syntax;
+      cout << "  ";
+      cout << string(syntax->begin, ' ');
+      cout << string(syntax->length(), '~');
+      cout << "^\n";
+      cout << "  Syntax error while parsing " << syntax->rule->name << endl;
+    }
+  }
 }
