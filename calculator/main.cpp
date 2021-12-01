@@ -89,7 +89,7 @@ int main() {
   g["Assignment"] << "Name '=' Equation" >>
       [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
 
-  g["Equation"] << "Add | Subtract | Product";
+  g["Equation"] << "Add | Subtract | Product | Variable";
 
   g["Product"] << "Multiply | Divide | Exponent";
 
