@@ -1,147 +1,19 @@
-/**
-*  This example demonstrate how we can use peg_parser::parser to define a
-* command-line calculator and use a visitor pattern to evaluate the result.
-*/
-
 #include <peg_parser/generator.h>
-
-#include <cmath>
 #include <iostream>
-#include <unordered_map>
+#include "visitor.h"
+
+using namespace std;
+using namespace peg_parser;
+
+void parserGenerator(ParserGenerator<void, Visitor &>& calculator);
 
 int main() {
-  using namespace std;
 
-  struct Visitor;
-
-  using Expression = peg_parser::Interpreter<void, Visitor &>::Expression;
-
-  struct Visitor {
-
-    float result{};
-    unordered_map<string, float> variables;
-
-    float getValue(Expression &e) {
-      e.evaluate(*this);
-      return result;
-    }
-
-    void visitAddition(Expression l, Expression r) {
-      result = getValue(l) + getValue(r);
-    }
-    void visitSubtraction(Expression l, Expression r) {
-      result = getValue(l) - getValue(r);
-    }
-    void visitMultiplication(Expression l, Expression r) {
-      result = getValue(l) * getValue(r);
-    }
-    void visitDivision(Expression l, Expression r) {
-      result = getValue(l) / getValue(r);
-    }
-    void visitPower(Expression l, Expression r) {
-      result = pow(getValue(l), getValue(r));
-    }
-
-    void visitVariable(const Expression& name) {
-      result = variables[name.string()];
-    }
-    void visitAssignment(const Expression& name, Expression value) {
-      variables[name.string()] = getValue(value);
-    }
-    void visitDecimalNumber(const Expression& value) {
-      result = stof(value.string());
-    }
-    void visitHexadecimalNumber(const Expression& value) {
-      result = stof(value.string());
-    }
-    void visitBinaryNumber(const Expression& value) {
-      string binary = value.string();
-      binary.pop_back();
-      result = (float) stoi(binary, nullptr, 2);
-    }
-
-    void visitSin(Expression value) {
-      result = sin(getValue(value));
-    }
-    void visitCos(Expression value) {
-      result = cos(getValue(value));
-    }
-
-    void visitHeader() {
-      result = {};
-      variables = unordered_map<string, float>();
-    }
-  };
-
-  peg_parser::ParserGenerator<void, Visitor &> calculator;
-
-  auto &g = calculator;
-
-  g.setSeparator(g["Whitespace"] << "[\t ]");
-
-  g["Session"] << "Expression | Header";
-
-  g["Header"] << "'-'+" >>
-      [](auto e, auto &v) { v.visitHeader(); };
-
-  g["Expression"] << "Assignment | Equation";
-
-  g["Assignment"] << "Name '=' Equation" >>
-      [](auto e, auto &v) { v.visitAssignment(e[0], e[1]); };
-
-  g["Equation"] << "Add | Subtract | Product | Variable";
-
-  g["Product"] << "Multiply | Divide | Exponent";
-
-  g["Exponent"] << "Power | Atomic";
-
-  g["Atomic"] << "Number | Brackets | Functions | Variable";
-
-  g["Brackets"] << "'(' Equation ')'";
-
-  g["Functions"] << "Sin | Cos";
-
-  g["Sin"] << "'sin' Brackets" >>
-      [](auto e, auto &v) { v.visitSin(e[0]); };
-
-  g["Cos"] << "'cos' Brackets" >>
-      [](auto e, auto &v) { v.visitCos(e[0]); };
-
-  g["Add"] << "Equation '+' Product" >>
-      [](auto e, auto &v) { v.visitAddition(e[0], e[1]); };
-
-  g["Subtract"] << "Equation '-' Product" >>
-      [](auto e, auto &v) { v.visitSubtraction(e[0], e[1]); };
-
-  g["Multiply"] << "Product '*' Exponent" >>
-      [](auto e, auto &v) { v.visitMultiplication(e[0], e[1]); };
-
-  g["Divide"] << "Product '/' Exponent" >>
-      [](auto e, auto &v) { v.visitDivision(e[0], e[1]); };
-
-  g["Power"] << "Atomic ('^' Exponent)" >>
-      [](auto e, auto &v) { v.visitPower(e[0], e[1]); };
-
-  g["Variable"] << "Name" >>
-      [](auto e, auto &v) { v.visitVariable(e); };
-
-  g["Name"] << "[a-zA-Z]+";
-
-  g["Number"] << "HexadecimalNumber | BinaryNumber | DecimalNumber";
-
-  g["DecimalNumber"] << "'-'? [0-9]+ ('.' [0-9]+)?" >>
-      [](auto e, auto &v) { v.visitDecimalNumber(e); };
-
-  g["HexadecimalNumber"] << "'0x' [0-9a-fA-F]+" >>
-      [](auto e, auto &v) { v.visitHexadecimalNumber(e); };
-
-  g["BinaryNumber"] << "[0-1]+ 'b'" >>
-      [](auto e, auto &v) { v.visitBinaryNumber(e); };
-
-  g.setStart(g["Session"]);
-
+  ParserGenerator<void, Visitor &> calculator;
   Visitor visitor;
   string input;
+
+  parserGenerator(calculator);
 
   while (true) {
 
@@ -153,10 +25,104 @@ int main() {
       calculator.run(input, visitor);
       cout << "Output: " << visitor.result << endl;
 
-    } catch (peg_parser::SyntaxError &error) {
+    } catch (SyntaxError &error) {
 
       cout << "*** Syntax error while parsing " << error.syntax->rule->name << endl;
 
     }
   }
+}
+
+void parserGenerator(ParserGenerator<void, Visitor &>& calculator) {
+
+  auto &parserGenerator = calculator;
+
+  parserGenerator.setSeparator(parserGenerator["Whitespace"] << "[\t ]");
+
+  parserGenerator["Session"] << "Expression | Header";
+
+  parserGenerator["Header"] << "'-'+" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitHeader();
+      };
+
+  parserGenerator["Expression"] << "Assignment | Equation";
+
+  parserGenerator["Assignment"] << "Name '=' Equation" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitAssignment(expression[0], expression[1]);
+      };
+
+  parserGenerator["Equation"] << "Add | Subtract | Product | Variable";
+
+  parserGenerator["Product"] << "Multiply | Divide | Exponent";
+
+  parserGenerator["Exponent"] << "Power | Atomic";
+
+  parserGenerator["Atomic"] << "Number | Brackets | Functions | Variable";
+
+  parserGenerator["Brackets"] << "'(' Equation ')'";
+
+  parserGenerator["Functions"] << "Sin | Cos";
+
+  parserGenerator["Sin"] << "'sin' Brackets" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitSin(expression[0]);
+      };
+
+  parserGenerator["Cos"] << "'cos' Brackets" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitCos(expression[0]);
+      };
+
+  parserGenerator["Add"] << "Equation '+' Product" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitAddition(expression[0], expression[1]);
+      };
+
+  parserGenerator["Subtract"] << "Equation '-' Product" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitSubtraction(expression[0], expression[1]);
+      };
+
+  parserGenerator["Multiply"] << "Product '*' Exponent" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitMultiplication(expression[0], expression[1]);
+      };
+
+  parserGenerator["Divide"] << "Product '/' Exponent" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitDivision(expression[0], expression[1]);
+      };
+
+  parserGenerator["Power"] << "Atomic ('^' Exponent)" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitPower(expression[0], expression[1]);
+      };
+
+  parserGenerator["Variable"] << "Name" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitVariable(expression);
+      };
+
+  parserGenerator["Name"] << "[a-zA-Z]+";
+
+  parserGenerator["Number"] << "HexadecimalNumber | BinaryNumber | DecimalNumber";
+
+  parserGenerator["DecimalNumber"] << "'-'? [0-9]+ ('.' [0-9]+)?" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitDecimalNumber(expression);
+      };
+
+  parserGenerator["HexadecimalNumber"] << "'0x' [0-9a-fA-F]+" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitHexadecimalNumber(expression);
+      };
+
+  parserGenerator["BinaryNumber"] << "[0-1]+ 'b'" >>
+      [](auto expression, auto &visitor) {
+        visitor.visitBinaryNumber(expression);
+      };
+
+  parserGenerator.setStart(parserGenerator["Session"]);
 }

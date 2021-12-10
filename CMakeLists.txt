@@ -41,7 +41,7 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/
 
 # ---- Create library ----
 
-add_library(PEGParser ${headers} ${sources} calculator/main.cpp)
+add_library(PEGParser ${headers} ${sources} calculator/main.cpp calculator/visitor.cpp calculator/visitor.h)
 
 set_target_properties(PEGParser PROPERTIES CXX_STANDARD 17)
 
