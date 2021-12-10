@@ -5,7 +5,7 @@
 using namespace std;
 using namespace peg_parser;
 
-void parserGenerator(ParserGenerator<void, Visitor &>& calculator);
+void parserGenerator(ParserGenerator<void, Visitor &> &calculator);
 
 int main() {
 
@@ -33,7 +33,7 @@ int main() {
   }
 }
 
-void parserGenerator(ParserGenerator<void, Visitor &>& calculator) {
+void parserGenerator(ParserGenerator<void, Visitor &> &calculator) {
 
   auto &parserGenerator = calculator;
 
