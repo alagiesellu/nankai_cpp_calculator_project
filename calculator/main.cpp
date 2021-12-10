@@ -6,6 +6,7 @@ using namespace std;
 using namespace peg_parser;
 
 void parserGenerator(ParserGenerator<void, Visitor &> &calculator);
+void checkExitProgram(string &input);
 
 int main() {
 
@@ -15,10 +16,14 @@ int main() {
 
   parserGenerator(calculator);
 
+  cout << "Enter 'exit' to exit a program." << endl;
+
   while (true) {
 
     cout << "Input: ";
     getline(cin, input);
+
+    checkExitProgram(input);
 
     try {
 
@@ -30,6 +35,13 @@ int main() {
       cout << "*** Syntax error while parsing " << error.syntax->rule->name << endl;
 
     }
+  }
+}
+void checkExitProgram(string &input) {
+  if (input == "exit") {
+
+    cout << "Bye bye." << endl;
+    exit(EXIT_SUCCESS);
   }
 }
 
